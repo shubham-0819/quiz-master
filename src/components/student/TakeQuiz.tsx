@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { CircularTimer } from '@/components/ui/CircularTimer';
-import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
-import { Clock, AlertCircle } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { CircularTimer } from "@/components/ui/CircularTimer";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+import { Clock, AlertCircle } from "lucide-react";
 
 interface Question {
   id: string;
@@ -42,15 +42,15 @@ export function TakeQuiz() {
       try {
         // Check if quiz is archived
         const { data: quizData, error: quizError } = await supabase
-          .from('quizzes')
-          .select('*')
-          .eq('id', quizId)
+          .from("quizzes")
+          .select("*")
+          .eq("id", quizId)
           .single();
 
         if (quizError) throw quizError;
         if (quizData.is_archived) {
-          toast.error('This quiz is no longer available');
-          navigate('/dashboard');
+          toast.error("This quiz is no longer available");
+          navigate("/dashboard");
           return;
         }
 
@@ -59,16 +59,16 @@ export function TakeQuiz() {
 
         // Check for existing attempt
         const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
+          .from("profiles")
+          .select("id")
           .single();
 
         if (profile) {
           const { data: attemptData } = await supabase
-            .from('quiz_attempts')
-            .select('*')
-            .eq('quiz_id', quizId)
-            .eq('student_id', profile.id)
+            .from("quiz_attempts")
+            .select("*")
+            .eq("quiz_id", quizId)
+            .eq("student_id", profile.id)
             .maybeSingle();
 
           if (attemptData) {
@@ -79,18 +79,18 @@ export function TakeQuiz() {
         }
 
         const { data: questionsData, error: questionsError } = await supabase
-          .from('questions')
-          .select('*')
-          .eq('quiz_id', quizId)
-          .order('created_at', { ascending: true });
+          .from("questions")
+          .select("*")
+          .eq("quiz_id", quizId)
+          .order("created_at", { ascending: true });
 
         if (questionsError) throw questionsError;
         setQuestions(questionsData || []);
       } catch (error: any) {
-        toast.error('Failed to load quiz', {
+        toast.error("Failed to load quiz", {
           description: error.message,
         });
-        navigate('/dashboard');
+        navigate("/dashboard");
       } finally {
         setLoading(false);
       }
@@ -119,28 +119,43 @@ export function TakeQuiz() {
   const startQuiz = async () => {
     try {
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
+        .from("profiles")
+        .select("id")
         .single();
 
-      if (!profile) throw new Error('Profile not found');
+      if (!profile) throw new Error("Profile not found");
 
       // Double-check for existing attempt before starting
       const { data: existingAttempt } = await supabase
-        .from('quiz_attempts')
-        .select('id')
-        .eq('quiz_id', quizId)
-        .eq('student_id', profile.id)
+        .from("quiz_attempts")
+        .select("id")
+        .eq("quiz_id", quizId)
+        .eq("student_id", profile.id)
         .maybeSingle();
+      console.log(existingAttempt);
+
+      // check if attempt is submited or not check by completed_at if not remove the attempt details and question responses
+      if (existingAttempt && existingAttempt.completed_at) {
+        await supabase
+          .from("quiz_attempts")
+          .delete()
+          .eq("id", existingAttempt.id);
+
+        await supabase
+          .from("question_responses")
+          .delete()
+          .eq("attempt_id", existingAttempt.id);
+        return;
+      }
 
       if (existingAttempt) {
-        toast.error('You have already attempted this quiz');
+        toast.error("You have already attempted this quiz");
         navigate(`/quiz/${quizId}/results`);
         return;
       }
 
       const { data: attempt, error } = await supabase
-        .from('quiz_attempts')
+        .from("quiz_attempts")
         .insert({
           quiz_id: quizId,
           student_id: profile.id,
@@ -150,8 +165,9 @@ export function TakeQuiz() {
         .single();
 
       if (error) {
-        if (error.code === '23505') { // Unique constraint violation
-          toast.error('You have already attempted this quiz');
+        if (error.code === "23505") {
+          // Unique constraint violation
+          toast.error("You have already attempted this quiz");
           navigate(`/quiz/${quizId}/results`);
           return;
         }
@@ -161,7 +177,7 @@ export function TakeQuiz() {
       setAttemptId(attempt.id);
       setQuizStarted(true);
     } catch (error: any) {
-      toast.error('Failed to start quiz', {
+      toast.error("Failed to start quiz", {
         description: error.message,
       });
     }
@@ -178,7 +194,7 @@ export function TakeQuiz() {
 
     try {
       const currentQuestion = questions[currentQuestionIndex];
-      await supabase.from('question_responses').insert({
+      await supabase.from("question_responses").insert({
         attempt_id: attemptId,
         question_id: currentQuestion.id,
         selected_option: selectedOption,
@@ -193,7 +209,7 @@ export function TakeQuiz() {
         handleQuizSubmit();
       }
     } catch (error: any) {
-      toast.error('Failed to save answer', {
+      toast.error("Failed to save answer", {
         description: error.message,
       });
     }
@@ -209,17 +225,17 @@ export function TakeQuiz() {
       ).length;
 
       await supabase
-        .from('quiz_attempts')
+        .from("quiz_attempts")
         .update({
           completed_at: new Date().toISOString(),
           score: (correctAnswers / questions.length) * 100,
           correct_answers: correctAnswers,
         })
-        .eq('id', attemptId);
+        .eq("id", attemptId);
 
       navigate(`/quiz/${quizId}/results`);
     } catch (error: any) {
-      toast.error('Failed to submit quiz', {
+      toast.error("Failed to submit quiz", {
         description: error.message,
       });
     }
@@ -243,7 +259,7 @@ export function TakeQuiz() {
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h1 className="text-2xl font-bold mb-4">{quiz.title}</h1>
           <p className="text-muted-foreground mb-6">{quiz.description}</p>
-          
+
           <div className="space-y-4">
             <div className="flex justify-between text-sm">
               <div className="flex items-center">
@@ -255,7 +271,7 @@ export function TakeQuiz() {
                 <span>Questions: {quiz.questions_per_quiz}</span>
               </div>
             </div>
-            
+
             <Button onClick={startQuiz} className="w-full" size="lg">
               Start Quiz
             </Button>
@@ -281,7 +297,9 @@ export function TakeQuiz() {
         </div>
 
         <div className="space-y-6">
-          <div className="text-xl font-medium">{currentQuestion.question_text}</div>
+          <div className="text-xl font-medium">
+            {currentQuestion.question_text}
+          </div>
 
           <div className="space-y-3">
             {currentQuestion.options.map((option, index) => (
@@ -290,8 +308,8 @@ export function TakeQuiz() {
                 onClick={() => handleOptionSelect(index)}
                 className={`w-full text-left p-4 rounded-lg border transition-colors ${
                   selectedOption === index
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'hover:bg-secondary'
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "hover:bg-secondary"
                 }`}
               >
                 {option}
@@ -305,8 +323,8 @@ export function TakeQuiz() {
               disabled={selectedOption === null}
             >
               {currentQuestionIndex === questions.length - 1
-                ? 'Submit Quiz'
-                : 'Next Question'}
+                ? "Submit Quiz"
+                : "Next Question"}
             </Button>
           </div>
         </div>
