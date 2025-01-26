@@ -63,13 +63,6 @@ export function DashboardLayout({ user }: { user: any }) {
                     Create Quiz
                   </Link>
                 )}
-                <Link
-                  to="/stats"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900"
-                >
-                  <BarChart className="h-4 w-4 mr-2" />
-                  Statistics
-                </Link>
               </div>
             </div>
             <div className="flex items-center">

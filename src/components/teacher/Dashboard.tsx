@@ -82,33 +82,11 @@ export function TeacherDashboard() {
   async function deleteQuiz(quizId: string) {
     setDeleting(quizId);
     try {
-      // Get all attempts for this quiz
-      const { data: attempts } = await supabase
-        .from("quiz_attempts")
-        .select("id")
-        .eq("quiz_id", quizId);
-
-      if (attempts) {
-        // Delete all question responses for these attempts
-        for (const attempt of attempts) {
-          await supabase
-            .from("question_responses")
-            .delete()
-            .eq("attempt_id", attempt.id);
-        }
-      }
-
-      // Delete all attempts
-      await supabase.from("quiz_attempts").delete().eq("quiz_id", quizId);
-
-      // Delete all quiz questions
-      await supabase.from("quiz_questions").delete().eq("quiz_id", quizId);
-
-      // Delete all questions
-      await supabase.from("questions").delete().eq("quiz_id", quizId);
-
       // Finally, delete the quiz
-      const { error } = await supabase.from("quizzes").delete().eq("id", quizId);
+      const { error } = await supabase
+        .from("quizzes")
+        .delete()
+        .eq("id", quizId);
 
       if (error) throw error;
 
@@ -124,7 +102,7 @@ export function TeacherDashboard() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6  p-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold tracking-tight">My Quizzes</h1>
         <Link to="/quiz/create">
@@ -177,7 +155,7 @@ export function TeacherDashboard() {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <Link to={`/quiz/${quiz.id}/results`} className="col-span-2">
+                  <Link to={`/quiz/${quiz.id}/attempts`} className="col-span-2">
                     <Button variant="secondary" className="w-full">
                       <Users className="h-4 w-4 mr-2" />
                       View Attempts
@@ -211,8 +189,8 @@ export function TeacherDashboard() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete Quiz?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete
-                          the quiz and all associated data including:
+                          This action cannot be undone. This will permanently
+                          delete the quiz and all associated data including:
                           <ul className="list-disc list-inside mt-2">
                             <li>All questions</li>
                             <li>All student attempts</li>

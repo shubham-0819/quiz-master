@@ -18,6 +18,7 @@ import { QuizQuestions } from "@/components/teacher/QuizQuestions";
 import { TakeQuiz } from "@/components/student/TakeQuiz";
 import { QuizResults } from "@/components/student/QuizResults";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import QuizAttempts from "./components/teacher/QuizAttempts";
 
 export default function App() {
   const [user, setUser] = useState<any>(null);
@@ -100,6 +101,12 @@ export default function App() {
               path="/quiz/:quizId/results"
               element={
                 user ? <QuizResults /> : <Navigate to="/signin" replace />
+              }
+            />
+            <Route
+              path="/quiz/:quizId/attempts"
+              element={
+                user ? <QuizAttempts /> : <Navigate to="/signin" replace />
               }
             />
           </Route>

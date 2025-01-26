@@ -1,25 +1,26 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { supabase } from '@/lib/supabase';
-import { toast } from 'sonner';
+} from "@/components/ui/select";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 
 interface Question {
   id: string;
   question_text: string;
   options: string[];
   correct_answer: number;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: "easy" | "medium" | "hard";
   topic: string;
   hint?: string;
   explanation?: string;
@@ -34,20 +35,19 @@ interface Quiz {
 export function QuizQuestions() {
   const { quizId } = useParams();
 
-  
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState({
-    question_text: '',
-    options: ['', '', '', ''],
+    question_text: "",
+    options: ["", "", "", ""],
     correct_answer: 0,
-    difficulty: 'medium' as const,
-    topic: '',
-    hint: '',
-    explanation: '',
+    difficulty: "medium" as const,
+    topic: "",
+    hint: "",
+    explanation: "",
   });
 
   useEffect(() => {
@@ -57,9 +57,9 @@ export function QuizQuestions() {
       try {
         // Load quiz details
         const { data: quizData, error: quizError } = await supabase
-          .from('quizzes')
-          .select('*')
-          .eq('id', quizId)
+          .from("quizzes")
+          .select("*")
+          .eq("id", quizId)
           .single();
 
         if (quizError) throw quizError;
@@ -67,17 +67,17 @@ export function QuizQuestions() {
 
         // Load existing questions
         const { data: questionsData, error: questionsError } = await supabase
-          .from('questions')
-          .select('*')
-          .eq('quiz_id', quizId)
+          .from("questions")
+          .select("*")
+          .eq("quiz_id", quizId);
 
         if (questionsError) throw questionsError;
         setQuestions(questionsData || []);
       } catch (error: any) {
-        toast.error('Failed to load quiz', {
+        toast.error("Failed to load quiz", {
           description: error.message,
         });
-        navigate('/dashboard');
+        navigate("/dashboard");
       } finally {
         setLoading(false);
       }
@@ -98,15 +98,15 @@ export function QuizQuestions() {
 
     try {
       const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
+        .from("profiles")
+        .select("id")
         .single();
 
-      if (!profile) throw new Error('Profile not found');
+      if (!profile) throw new Error("Profile not found");
 
       // Save the question
       const { data: question, error: questionError } = await supabase
-        .from('questions')
+        .from("questions")
         .insert({
           ...currentQuestion,
           created_by: profile.id,
@@ -122,18 +122,18 @@ export function QuizQuestions() {
 
       // Reset form
       setCurrentQuestion({
-        question_text: '',
-        options: ['', '', '', ''],
+        question_text: "",
+        options: ["", "", "", ""],
         correct_answer: 0,
-        difficulty: 'medium',
-        topic: '',
-        hint: '',
-        explanation: '',
+        difficulty: "medium",
+        topic: "",
+        hint: "",
+        explanation: "",
       });
 
-      toast.success('Question added successfully');
+      toast.success("Question added successfully");
     } catch (error: any) {
-      toast.error('Failed to add question', {
+      toast.error("Failed to add question", {
         description: error.message,
       });
     } finally {
@@ -149,8 +149,28 @@ export function QuizQuestions() {
     return <div className="text-center py-8">Quiz not found.</div>;
   }
 
+  const handleQuestionDelete = async (id: string)=> {
+    try {
+      const { data, error } = await supabase
+        .from('questions')
+        .delete()
+        .eq('id', id)
+        .select();
+
+      if (error) throw error;
+      if (data) {
+        setQuestions(questions.filter(q => q.id !== id));
+        toast.success('Question deleted successfully');
+      }
+    } catch (error: any) {
+      toast.error('Failed to delete question', {
+        description: error.message
+      });
+    }
+  }
+
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-3xl mx-auto space-y-8 sm:p-2 p-6">
       <div className="bg-white rounded-lg shadow-sm border p-6">
         <h1 className="text-2xl font-bold mb-2">{quiz.title}</h1>
         <p className="text-muted-foreground mb-4">
@@ -187,9 +207,16 @@ export function QuizQuestions() {
                 />
                 <Button
                   type="button"
-                  variant={currentQuestion.correct_answer === index ? 'default' : 'outline'}
+                  variant={
+                    currentQuestion.correct_answer === index
+                      ? "default"
+                      : "outline"
+                  }
                   onClick={() =>
-                    setCurrentQuestion({ ...currentQuestion, correct_answer: index })
+                    setCurrentQuestion({
+                      ...currentQuestion,
+                      correct_answer: index,
+                    })
                   }
                 >
                   Correct
@@ -203,7 +230,7 @@ export function QuizQuestions() {
               <Label htmlFor="difficulty">Difficulty</Label>
               <Select
                 value={currentQuestion.difficulty}
-                onValueChange={(value: 'easy' | 'medium' | 'hard') =>
+                onValueChange={(value: "easy" | "medium" | "hard") =>
                   setCurrentQuestion({ ...currentQuestion, difficulty: value })
                 }
               >
@@ -224,7 +251,10 @@ export function QuizQuestions() {
                 id="topic"
                 value={currentQuestion.topic}
                 onChange={(e) =>
-                  setCurrentQuestion({ ...currentQuestion, topic: e.target.value })
+                  setCurrentQuestion({
+                    ...currentQuestion,
+                    topic: e.target.value,
+                  })
                 }
                 required
                 placeholder="Enter topic"
@@ -265,10 +295,10 @@ export function QuizQuestions() {
             disabled={saving || questions.length >= quiz.questions_per_quiz}
           >
             {saving
-              ? 'Adding Question...'
+              ? "Adding Question..."
               : questions.length >= quiz.questions_per_quiz
-              ? 'Maximum Questions Reached'
-              : 'Add Question'}
+              ? "Maximum Questions Reached"
+              : "Add Question"}
           </Button>
         </form>
       </div>
@@ -283,15 +313,31 @@ export function QuizQuestions() {
                 className="border rounded-lg p-4 hover:bg-gray-50"
               >
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="">
                     <span className="text-sm text-muted-foreground">
                       Question {index + 1}
                     </span>
                     <p className="font-medium mt-1">{question.question_text}</p>
+
+                    <Button
+                      onClick={() => handleQuestionDelete(question.id)}
+                      variant="outline"
+                      className="w-14 col-span-2 text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    </Button>
                   </div>
-                  <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-gray-100">
+                    <span 
+                    className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                      question.difficulty === 'easy' 
+                      ? 'bg-green-100 text-green-800' 
+                      : question.difficulty === 'medium'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : 'bg-red-100 text-red-800'
+                    }`}
+                    >
                     {question.difficulty}
-                  </span>
+                    </span>
                 </div>
               </div>
             ))}

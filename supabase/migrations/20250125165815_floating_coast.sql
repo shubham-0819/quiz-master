@@ -187,6 +187,18 @@ CREATE POLICY "Everyone can read questions"
     TO authenticated
     USING (true);
 
+-- Questions Delete Policy
+CREATE POLICY "Teachers can delete their own questions"
+    ON questions FOR DELETE 
+    TO authenticated
+    USING (
+        created_by IN (
+            SELECT id FROM profiles
+            WHERE profiles.user_id = auth.uid()
+            AND profiles.role = 'teacher'
+        )
+    );
+
 -- Quizzes Policies
 CREATE POLICY "Teachers can create quizzes"
     ON quizzes FOR INSERT
@@ -212,6 +224,18 @@ CREATE POLICY "Everyone can read quizzes"
     ON quizzes FOR SELECT
     TO authenticated
     USING (true);
+
+-- Quizzes Delete Policy
+CREATE POLICY "Teachers can delete their own quizzes"
+    ON quizzes FOR DELETE
+    TO authenticated
+    USING (
+        created_by IN (
+            SELECT id FROM profiles
+            WHERE profiles.user_id = auth.uid()
+            AND profiles.role = 'teacher'
+        )
+    );
 
 -- Quiz Questions Policies
 CREATE POLICY "Teachers can manage quiz questions"
