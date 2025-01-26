@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
-import { Archive, ArrowUpDown } from 'lucide-react';
+import { Archive, ArrowUpDown, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface QuizAttempt {
@@ -74,6 +74,7 @@ export function QuizResults() {
           .eq('quiz_id', quizId)
           .order('started_at', { ascending: false });
 
+        console.log(attemptsData)
         if (attemptsError) throw attemptsError;
         setAttempts(attemptsData);
       } catch (error: any) {
@@ -136,6 +137,31 @@ export function QuizResults() {
     }
   };
 
+  const exportToCSV = () => {
+    const headers = ['Student Name', 'Score (%)', 'Correct Answers', 'Total Questions', 'Completion Date'];
+    const csvData = sortedAttempts.map(attempt => [
+      attempt.student.full_name,
+      attempt.score.toString(),
+      attempt.correct_answers.toString(),
+      attempt.total_questions.toString(),
+      format(new Date(attempt.completed_at), 'PPp')
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${quiz?.title}_results.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading results...</div>;
   }
@@ -152,31 +178,38 @@ export function QuizResults() {
           <p className="text-muted-foreground">{quiz.description}</p>
         </div>
 
-        {!quiz.is_archived && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline">
-                <Archive className="h-4 w-4 mr-2" />
-                Archive Quiz
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Archive Quiz?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action will archive the quiz and make it unavailable for new
-                  attempts. Existing results will still be accessible.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleArchiveQuiz}>
-                  Archive
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={exportToCSV}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+
+          {!quiz.is_archived && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline">
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archive Quiz
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Archive Quiz?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action will archive the quiz and make it unavailable for new
+                    attempts. Existing results will still be accessible.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleArchiveQuiz}>
+                    Archive
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-4">

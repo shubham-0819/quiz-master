@@ -1,8 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { PlusCircle, Copy } from "lucide-react";
+import { PlusCircle, Copy, Clock, Users, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/lib/supabase";
+import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface Quiz {
   id: string;
@@ -17,6 +30,7 @@ export function TeacherDashboard() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [duplicating, setDuplicating] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   async function loadQuizzes() {
     const { data, error } = await supabase
@@ -65,6 +79,50 @@ export function TeacherDashboard() {
     } catch (error) {}
   }
 
+  async function deleteQuiz(quizId: string) {
+    setDeleting(quizId);
+    try {
+      // Get all attempts for this quiz
+      const { data: attempts } = await supabase
+        .from("quiz_attempts")
+        .select("id")
+        .eq("quiz_id", quizId);
+
+      if (attempts) {
+        // Delete all question responses for these attempts
+        for (const attempt of attempts) {
+          await supabase
+            .from("question_responses")
+            .delete()
+            .eq("attempt_id", attempt.id);
+        }
+      }
+
+      // Delete all attempts
+      await supabase.from("quiz_attempts").delete().eq("quiz_id", quizId);
+
+      // Delete all quiz questions
+      await supabase.from("quiz_questions").delete().eq("quiz_id", quizId);
+
+      // Delete all questions
+      await supabase.from("questions").delete().eq("quiz_id", quizId);
+
+      // Finally, delete the quiz
+      const { error } = await supabase.from("quizzes").delete().eq("id", quizId);
+
+      if (error) throw error;
+
+      toast.success("Quiz deleted successfully");
+      setQuizzes((prevQuizzes) => prevQuizzes.filter((q) => q.id !== quizId));
+    } catch (error: any) {
+      toast.error("Failed to delete quiz", {
+        description: error.message,
+      });
+    } finally {
+      setDeleting(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -90,36 +148,91 @@ export function TeacherDashboard() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {quizzes.map((quiz) => (
             <div
               key={quiz.id}
-              className="bg-white rounded-lg shadow-sm border p-6 space-y-4"
+              className="group bg-white rounded-xl shadow-sm border hover:shadow-md transition-all duration-200 overflow-hidden"
             >
-              <h3 className="font-semibold text-lg">{quiz.title}</h3>
-              <p className="text-sm text-muted-foreground line-clamp-2">
-                {quiz.description}
-              </p>
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>{quiz.questions_per_quiz} questions</span>
-                <span>{quiz.duration_minutes} minutes</span>
-              </div>
-              <div className="flex gap-1 flex-row pt-4">
-                <Link to={`/quiz/${quiz.id}`} className="w-1/2">
-                  <Button variant="outline" className="w-full">
-                    View Details
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-lg line-clamp-1">
+                    {quiz.title}
+                  </h3>
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(quiz.created_at), "MMM d, yyyy")}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-4">
+                  {quiz.description}
+                </p>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-6">
+                  <div className="flex items-center">
+                    <Users className="h-4 w-4 mr-1" />
+                    <span>{quiz.questions_per_quiz} questions</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Clock className="h-4 w-4 mr-1" />
+                    <span>{quiz.duration_minutes} min</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Link to={`/quiz/${quiz.id}/results`} className="col-span-2">
+                    <Button variant="secondary" className="w-full">
+                      <Users className="h-4 w-4 mr-2" />
+                      View Attempts
+                    </Button>
+                  </Link>
+                  <Link to={`/quiz/${quiz.id}`}>
+                    <Button variant="outline" className="w-full">
+                      Edit Quiz
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => duplicateQuiz(quiz)}
+                    disabled={duplicating === quiz.id}
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    {duplicating === quiz.id ? "Duplicating..." : "Duplicate"}
                   </Button>
-                </Link>
-
-                <Button
-                  variant="outline"
-                  className="w-1/2"
-                  onClick={() => duplicateQuiz(quiz)}
-                  disabled={duplicating === quiz.id}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  {duplicating === quiz.id ? "Duplicating..." : "Duplicate"}
-                </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full col-span-2 text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Quiz
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Quiz?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action cannot be undone. This will permanently delete
+                          the quiz and all associated data including:
+                          <ul className="list-disc list-inside mt-2">
+                            <li>All questions</li>
+                            <li>All student attempts</li>
+                            <li>All responses and results</li>
+                          </ul>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteQuiz(quiz.id)}
+                          className="bg-red-500 hover:bg-red-600"
+                          disabled={deleting === quiz.id}
+                        >
+                          {deleting === quiz.id ? "Deleting..." : "Delete Quiz"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </div>
           ))}

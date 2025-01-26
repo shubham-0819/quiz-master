@@ -10,20 +10,27 @@ import {
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/lib/auth';
 import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 export function DashboardLayout({ user }: { user: any }) {
   const navigate = useNavigate();
   const isTeacher = user?.profile?.role === 'teacher';
+
   useEffect(() => {
-    if(!user) {
-      signOut().then(() => navigate('/signin'));
+    if (!user) {
+      navigate('/signin');
     }
   }, [user, navigate]);
-  
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/signin');
+    try {
+      await signOut();
+      navigate('/signin');
+    } catch (error: any) {
+      toast.error('Failed to sign out', {
+        description: error.message,
+      });
+    }
   };
 
   return (
@@ -69,7 +76,7 @@ export function DashboardLayout({ user }: { user: any }) {
               <div className="flex-shrink-0">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
-                    <User className="h-5 w-5 text-gray-400" />
+                    <User className="h-5 w-5 text-gray-500" />
                     <span className="text-sm font-medium text-gray-700">
                       {user?.profile?.full_name}
                     </span>
@@ -78,7 +85,7 @@ export function DashboardLayout({ user }: { user: any }) {
                     variant="ghost"
                     size="icon"
                     onClick={handleSignOut}
-                    className="text-gray-500 hover:text-gray-700"
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
                   >
                     <LogOut className="h-5 w-5" />
                   </Button>
